@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 def preprocess_batch_for_hf_dataset(dataset, tokenizer, args):
     if args.preprocess_inputs:
-        return tokenizer.prepare_seq2seq_batch(
+        return tokenizer(
             src_texts=[
                 prefix + ": " + input_text
                 for prefix, input_text in zip(dataset["prefix"], dataset["input_text"])
             ],
-            tgt_texts=dataset["target_text"],
+            text_target=dataset["target_text"],
             max_length=args.max_seq_length,
             max_target_length=args.max_length,
             padding="max_length",
@@ -34,12 +34,12 @@ def preprocess_batch_for_hf_dataset(dataset, tokenizer, args):
             truncation=True,
         )
     else:
-        return tokenizer.prepare_seq2seq_batch(
+        return tokenizer(
             src_texts=[
                 prefix + input_text
                 for prefix, input_text in zip(dataset["prefix"], dataset["input_text"])
             ],
-            tgt_texts=dataset["target_text"],
+            text_target=dataset["target_text"],
             max_length=args.max_seq_length,
             max_target_length=args.max_length,
             padding="max_length",
@@ -80,11 +80,11 @@ def preprocess_data(data):
 
     # Add EOS again if truncated?
     if args.preprocess_inputs:
-        batch = tokenizer.prepare_seq2seq_batch(
+        batch = tokenizer(
             src_texts=[prefix + ": " + input_text],
-            tgt_texts=[target_text],
+            text_target=[target_text],
             max_length=args.max_seq_length,
-            padding="max_length",
+            padding=True,
             return_tensors="pt",
             truncation=True,
         )
@@ -104,14 +104,29 @@ def preprocess_data(data):
         #     truncation=True,
         # )
     else:
-        batch = tokenizer.prepare_seq2seq_batch(
-            src_texts=[prefix + input_text],
-            tgt_texts=[target_text],
+
+        # print("prefix", prefix)
+        # print("input_text", input_text)
+        # print("target_text", target_text)
+
+        # print(prefix)
+        # print(input_text)
+        # print("=========================")
+
+        batch = tokenizer(
+            [prefix + ': ' + input_text],
+            #            text_target=[target_text],
             max_length=args.max_seq_length,
             padding="max_length",
             return_tensors="pt",
             truncation=True,
         )
+
+        target = tokenizer.encode(
+            target_text, max_length=args.max_seq_length, padding="max_length", return_tensors="pt", truncation=True
+        )
+
+        # print(batch)
         # input_text = tokenizer.encode(
         #     prefix + input_text,
         #     max_length=args.max_seq_length,
@@ -123,9 +138,21 @@ def preprocess_data(data):
         # target_text = tokenizer.encode(
         #     target_text, max_length=args.max_seq_length, padding="max_length", return_tensors="pt", truncation=True
         # )
+
     input_ids = batch["input_ids"][0]
     attention_mask = batch["attention_mask"][0]
-    labels = batch["labels"][0]
+    labels = target[0]  # batch["labels"][0]
+
+
+    # print(input_ids)  
+    # print(attention_mask)
+    # print(labels)
+
+
+    # print(input_ids.shape)
+    # print(attention_mask.shape)
+    # print(labels.shape)
+
     return (input_ids, attention_mask, labels)
 
 
